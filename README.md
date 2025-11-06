@@ -33,7 +33,55 @@ To point your system to another server, simple enter into read-write mode, edit 
 	root@spotty:etc# vi SoundTouchSdkPrivateCfg.xml
 	root@spotty:etc# reboot
 
+## Running, testing, and installing
 
+### Installing
 
+This has been written and tested with Python 3.12. Eventually it will be bundled as an installable app but for now you'll want a virtualenv.
 
+1. Install virtualenv-wrapper if you don't already have it. This assumes bash;
+modify as necessary.
+	```sh
+	sudo apt-install python3-pip
+	pip install --user virtualenvwrapper
+	mkdir -p $WORKON_HOME
+	cat <<EOT >> ~/.bashrc
+	export WORKON_HOME=${HOME}/.virtualenvs
+	export PIP_VIRTUALENV_BASE=${HOME}/.virtualenvs
+	export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
+	source ~/.local/bin/virtualenvwrapper.sh
+	EOT
+	source ~/.bashrc
+	```
+1. Make a virtualenv for soundcork
+	```bash
+	mkvirtualenv -p3.12 soundcork
+	workon soundcork
+	```
+1. Install the pre-requisites
+	```bash
+	pip install requirements.txt
+	```
 
+### Running
+
+- To run in test
+	```sh
+	fastapi dev main.py
+	# server is on http://127.0.0.1:8000
+	```
+- To run a prod server
+	```sh
+	fastapi run main.py
+	```
+- To run as a daemon
+	```sh
+	#Allen could you strip out paths
+	#and copy in here our /etc/systemd/system/soundcork.service
+	#and say how to
+	sudo systemctl enable soundcork
+	sudo systemctl start soundcork
+	#i mean eventually
+	#not now
+	#ouch
+	```
