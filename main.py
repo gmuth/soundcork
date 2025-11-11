@@ -1,17 +1,18 @@
 from functools import lru_cache
+from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
 
 from config import Settings
 from model import (
-    BmxResponse,
-    Service,
     Asset,
-    Id,
-    IconSet,
-    BmxPlaybackResponse,
     Audio,
+    BmxPlaybackResponse,
+    BmxResponse,
+    IconSet,
+    Id,
+    Service,
     Stream,
 )
 
@@ -60,24 +61,14 @@ def read_root():
 @app.post(
     "/marge/streaming/support/power_on",
     tags=["marge"],
+    status_code=HTTPStatus.NOT_FOUND,
 )
 def power_on(settings: Annotated[Settings, Depends(get_settings)]):
     # see https://github.com/fastapi/fastapi/discussions/8091 for the TODO here
-    return (
-        f'<?xml version="1.0" encoding="UTF-8" ?><device-data><device id="{settings.device_id}">'
-        f"<serialnumber>{settings.device_serial_number}</serialnumber>"
-        f"<firmware-version>{settings.firmware_version}</firmware-version>"
-        f"<product product_code={settings.product_code} type={settings.type}>"
-        f"<serialnumber>{settings.product_serial_number}</serialnumber>"
-        f"</product></device><diagnostic-data><device-landscape>"
-        f"<gateway-ip-address>{settings.gateway_ip_address}</gateway-ip-address>"
-        f'<macaddresses><macaddress>{"</macaddress><macaddress>".join(settings.macaddresses)}</macaddress></macaddresses>'
-        f"<ip-address>{settings.ip_address}</ip-address>"
-        f"<network-connection-type>{settings.type}</network-connection-type>"
-        "</device-landscape><network-landscape>"
-        '<network-data xmlns="http://www.Bose.com/Schemas/2012-12/NetworkMonitor/" />'
-        "</network-landscape></diagnostic-data></device-data>"
-    )
+    # I wonder if the endpoint will work if I return HTTPStatus.IM_A_TEAPOT
+    # instead? I'd like to try it.
+
+    return
 
 
 @app.get("/bmx/registry/v1/services", tags=["bmx"])
@@ -101,17 +92,21 @@ def bmx_services(settings: Annotated[Settings, Depends(get_settings)]) -> BmxRes
         name="TuneIn",
         shortDescription="",
     )
-    tunein = Service(links = {
-        "bmx_navigate": {"href": "/v1/navigate"},
-        "bmx_token": {"href": "/v1/token"},
-        "self": {"href": "/"},
-        }, askAdapter = False, baseUrl = settings.base_url + "/bmx/tunein", streamTypes = ["liveRadio", "onDemand"],
-        id = Id(name="TUNEIN", value=25),
-        authenticationModel = {
-            "anonymousAccount": {"autoCreate": True, "enabled": True}
-        }, assets = assets)
+    tunein = Service(
+        links={
+            "bmx_navigate": {"href": "/v1/navigate"},
+            "bmx_token": {"href": "/v1/token"},
+            "self": {"href": "/"},
+        },
+        askAdapter=False,
+        baseUrl=settings.base_url + "/bmx/tunein",
+        streamTypes=["liveRadio", "onDemand"],
+        id=Id(name="TUNEIN", value=25),
+        authenticationModel={"anonymousAccount": {"autoCreate": True, "enabled": True}},
+        assets=assets,
+    )
     links = {"bmx_services_availability": {"href": "../servicesAvailability"}}
-    response = BmxResponse(links = links, askAgainAfter = 1277728, bmx_services = [tunein])
+    response = BmxResponse(links=links, askAgainAfter=1277728, bmx_services=[tunein])
 
     return response
 
