@@ -1,9 +1,11 @@
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from os import path
 
 from config import Settings
 from model import ConfiguredSource, Preset, SourceProvider
 
+# We'll move these into a constants file eventually.
 PROVIDERS = [
     "PANDORA",
     "INTERNET_RADIO",
@@ -47,7 +49,7 @@ PROVIDERS = [
 
 
 def account_device_dir(settings: Settings, account: str, device: str) -> str:
-    return settings.data_dir + "/" + account + "/" + device + "/"
+    return path.join(settings.data_dir, account, device)
 
 
 def source_providers() -> list[SourceProvider]:
@@ -58,6 +60,8 @@ def source_providers() -> list[SourceProvider]:
     ]
 
 
+# This will probably be refactored into a datastore class for reading and writing the datastore,
+# but it's too early to do that refactor for now during POC.
 def configured_sources(
     settings: Settings, account: str, device: str
 ) -> list[ConfiguredSource]:
@@ -97,12 +101,12 @@ def presets(settings: Settings, account: str, device: str) -> list[Preset]:
         content_item = preset.find("ContentItem")
         name = content_item.find("itemName").text
         source = content_item.attrib["source"]
-        type = content_item.attrib["type"] if "type" in content_item.attrib else ""
+        type = content_item.attrib.get("type"], "")
         location = content_item.attrib["location"]
         source_account = content_item.attrib["sourceAccount"]
         is_presetable = content_item.attrib["isPresetable"]
         container_art_elem = content_item.find("containerArt")
-        if container_art_elem != None and container_art_elem.text != None:
+        if container_art_elem and container_art_elem.text:
             container_art = container_art_elem.text
         else:
             container_art = ""
@@ -128,6 +132,7 @@ def presets_xml(settings: Settings, account: str, device: str) -> ET.Element:
 
     presets_list = presets(settings, account, device)
 
+    # We hardcode a date here because we'll never use it, so there's no need for a real date object.
     datestr = "2012-09-19T12:43:00.000+00:00"
 
     presets_element = ET.Element("presets")
