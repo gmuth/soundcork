@@ -12,9 +12,7 @@ This is an attempt to reverse-engineer those servers so that users can continue 
 
 ### Context
 
-[As described here](https://flarn2006.blogspot.com/2014/09/hacking-bose-soundtouch-and-its-linux.html), it is possible to access the underlying server by creating a USB stick with an empty file called **remote_services** and then booting the SoundTouch with the USB stick plugged in to the USB port in the back. From there we can then telnet (or ssh, but the ssh server running is fairly old) over and log in as root (no password).
-
-### Pointing the Bose Speaker to a Local Server
+[As described here](https://flarn2006.blogspot.com/2014/09/hacking-bose-soundtouch-and-its-linux.html), it is possible to access the underlying server by creating a USB stick with an empty file called ```remote_services``` and then booting the SoundTouch with the USB stick plugged in to the USB port in the back. From there we can then telnet (or ssh, but the ssh server running is fairly old) over and log in as root (no password).
 
 Once logged into the speaker, you can go to `/opt/Bose/etc` and look at the file `SoundTouchSdkPrivateCfg.xml`:
 
@@ -29,15 +27,9 @@ Once logged into the speaker, you can go to `/opt/Bose/etc` and look at the file
 	  <bmxRegistryUrl>https://content.api.bose.io/bmx/registry/v1/services</bmxRegistryUrl>
 	</SoundTouchSdkPrivateCfg>
 
-Assumingly all four servers listed there will be shut down. From testing, the `marge` server is necessary for basic network functionality, and the `bmx` server seems to be required for TuneIn radio.
+Assumingly all four servers listed there will be shut down. From testing, the `marge` server is necessary for basic network functionality, and the `bmx` server seems to be required for TuneIn radio at least. The stats and swUpdate addresses don't seem to be necessary for the speaker to function.
 
-To point your system to another server, simple enter into read-write mode, edit the file (vi is available) and replace the URLs with your local URLs, and then reboot
-
-	root@spotty:etc# rw                            
-	root@spotty:etc# vi SoundTouchSdkPrivateCfg.xml
-	root@spotty:etc# reboot
-
-## Running, testing, and installing
+## Running, testing, and installing soundcork
 
 ### Installing
 
@@ -96,3 +88,105 @@ When you're done with the virtual environment, you can type `deactivate` to leav
 		```
 
 You can verify the server by checking the `/docs` endpoint at your URL.
+
+### Setting your SoundTouch device to use the soundcork server
+
+For purposes of this example, let's say that you've set up a soundcork server on your local server available via hostname ```soundcork.local.example.com``` and running on port 8000.  Let's also say that you want a data dir at ```/home/soundcork/db```.
+
+To configure the server, go to the ```soundcork``` subdirectory of the repository. Copy the ```env.shared``` file to ```env.private```, and then edit it to show your configuration:
+
+	cd soundcork
+	cp .env.shared .env.private
+	vim .env.private
+	
+new contents of ```.env.private```:
+
+	base_url = "http://soundcork.local.example.com:8000"
+	data_dir = "/home/soundcork/db"
+
+and then start the server
+
+	fastapi run main.py
+
+Once a soundcork server is running, the next step is to configure your SoundTouch device to run using soundcork instead of the Bose servers.  The first step is to get access to the Bose system. As mentioned in the Context section above, the way to do that is to get a USB drive, create a file called ```remote_services```, plug it into the USB port of the SoundTouch speaker and then reboot the speaker (unplugging and plugging back in being the most direct way).  
+
+Once the speaker has rebooted, you can connect to it via telnet. So if your SoundTouch device is on 192.168.1.158, you can do
+
+	telnet 192.168.1.158
+	
+You'll get a login screen.  Log in as user ```root```; there is no password. 
+
+Once you're logged into the shell on the SoundTouch speaker, there are two things that need to be done. First, the speaker has a lot of information about its current configuration; this information will need to be sent to the soundcork server so that we can send it back to the speaker.  Second, the speaker will need to be configured to point to the soundcork server itself.
+
+#### Configuring the soundcork server from the Bose speaker
+
+The first two things that we'll need to do is to get the speaker's device ID and account ID. The device ID should show up as the HWaddr
+
+	spotty login: root
+	Last login: Fri Nov 28 22:43:49 EST 2025 on pts/0
+	eth0      Link encap:Ethernet  HWaddr A0:B1:C2:D3:E4:F5  
+	
+The device ID is the HWaddr without the separating colons, so in this case A0B1C2D3E4F5.
+
+The account ID can be found in the file ```/mnt/nv/BoseApp-Persistence/1/SystemConfigurationDB.xml```:
+
+	grep AccountUUID /mnt/nv/BoseApp-Persistence/1/SystemConfigurationDB.xml
+
+	<AccountUUID>1234567</AccountUUID>
+	
+So now your have your account number of ```1234567``` and device ID of ```A0B1C2D3E4F5```. Now, back on your soundcork system, create directories for the account and device in your ```data_dir```:
+
+	mkdir -p /home/soundcork/db/1234567/A0B1C2D3E4F5
+
+Finally, back on the SoundTouch speaker login,  bring over the current configuration of the speaker to the soundcork data directory:
+
+	cd /mnt/nv/BoseApp-Persistence/1/
+	scp * username@soundcork.local.example.com:/home/soundcork/db/1234567/A0B1C2D3E4F5
+	
+(If you're not running an ssh server on your machine you can also copy over the files to your USB stick and transfer them that way; the stick is mounted at ```/media/sda1```.)
+
+#### Configuring the Bose speaker to use the soundcork server
+
+Now that the soundcork server has all of the information that it needs, we're ready to tell the speaker to use the soundcork server instead of the Bose servers.  For this, we go to 
+
+	cd /opt/Bose/etc/
+
+set the filesystem to be read-write (this is a shortcut that the Bose engineers were nice enough to put in by default)
+
+	rw
+	
+and edit the file ```SoundTouchSdkPrivateCfg.xml```
+
+	vi SoundTouchSdkPrivateCfg.xml
+	
+The original values are
+
+	<?xml version="1.0" encoding="utf-8"?>
+	<SoundTouchSdkPrivateCfg>
+  	<margeServerUrl>https://streaming.bose.com</margeServerUrl>
+  	<statsServerUrl>https://events.api.bosecm.com</statsServerUrl>
+  	<swUpdateUrl>https://worldwide.bose.com/updates/soundtouch</swUpdateUrl>
+  	<usePandoraProductionServer>true</usePandoraProductionServer>
+  	<isZeroconfEnabled>true</isZeroconfEnabled>
+  	<saveMargeCustomerReport>false</saveMargeCustomerReport>
+  	<bmxRegistryUrl>https://content.api.bose.io/bmx/registry/v1/services</bmxRegistryUrl>
+	</SoundTouchSdkPrivateCfg>>
+	
+set these all to point to the soundcork server
+
+	<?xml version="1.0" encoding="utf-8"?>
+	<SoundTouchSdkPrivateCfg>
+  	<margeServerUrl>http://soundcork.local.example.com:8000/marge</margeServerUrl>
+  	<statsServerUrl>http://soundcork.local.example.com:8000</statsServerUrl>
+  	<swUpdateUrl>http://soundcork.local.example.com:8000/updates/soundtouch</swUpdateUrl>
+  	<usePandoraProductionServer>true</usePandoraProductionServer>
+  	<isZeroconfEnabled>true</isZeroconfEnabled>
+  	<saveMargeCustomerReport>false</saveMargeCustomerReport>
+  	<bmxRegistryUrl>http://soundcork.local.example.com:8000/bmx/registry/v1/services</bmxRegistryUrl>
+	</SoundTouchSdkPrivateCfg>>
+
+And finally, the moment of truth: reboot the speaker.  You can do it the way we did earlier by unplugging it, or, now that we have access to the command prompt, just run
+
+	reboot
+	
+
