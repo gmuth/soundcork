@@ -38,10 +38,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+datastore = DataStore()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up soundcork")
-    datastore = DataStore()
     datastore.discover_devices()
     logger.info("done starting up server")
     yield
@@ -161,7 +163,7 @@ def software_update(settings: Annotated[Settings, Depends(get_settings)], accoun
 
 @app.get("/marge/streaming/account/{account}/full", tags=["marge"])
 def account_full(settings: Annotated[Settings, Depends(get_settings)], account: str):
-    xml = account_full_xml(settings, account)
+    xml = account_full_xml(settings, account, datastore)
     return bose_xml_response(xml, startup_timestamp, "getFullAccount")
 
 
