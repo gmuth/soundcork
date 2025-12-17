@@ -6,7 +6,7 @@ import upnpclient
 
 from soundcork.config import Settings
 from soundcork.marge import account_device_dir
-from soundcork.model import DeviceInfo
+from soundcork.model import DeviceInfo, Preset
 
 # pyright: reportOptionalMemberAccess=false
 
@@ -86,3 +86,29 @@ class DataStore:
             ip_address=str(ip_address),
             name=str(name),
         )
+
+    def save_presets(
+        self, settings: Settings, account: str, device: str, presets_list: list[Preset]
+    ):
+        save_file = path.join(
+            account_device_dir(settings, account, device), "Presets.xml"
+        )
+        presets_elem = ET.Element("presets")
+        for preset in presets_list:
+            preset_elem = ET.SubElement(presets_elem, "preset")
+            preset_elem.attrib["id"] = preset.id
+            preset_elem.attrib["createdOn"] = preset.created_on
+            preset_elem.attrib["updatedOn"] = preset.updated_on
+            content_item_elem = ET.SubElement(preset_elem, "ContentItem")
+            content_item_elem.attrib["source"] = preset.source
+            content_item_elem.attrib["type"] = preset.type
+            content_item_elem.attrib["location"] = preset.location
+            content_item_elem.attrib["sourceAccount"] = preset.source_account
+            content_item_elem.attrib["isPresetable"] = "true"
+            ET.SubElement(content_item_elem, "itemName").text = preset.name
+            ET.SubElement(content_item_elem, "containerArt").text = preset.container_art
+
+        presets_tree = ET.ElementTree(presets_elem)
+        ET.indent(presets_tree, space="    ", level=0)
+        presets_tree.write(save_file, xml_declaration=True, encoding="UTF-8")
+        return presets_elem

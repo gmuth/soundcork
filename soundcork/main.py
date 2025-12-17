@@ -20,6 +20,7 @@ from soundcork.marge import (
     recents_xml,
     software_update_xml,
     source_providers,
+    update_preset,
 )
 from soundcork.model import (
     Asset,
@@ -138,6 +139,23 @@ def account_presets(
 ):
     xml = presets_xml(settings, account, device)
     return bose_xml_response(xml)
+
+
+@app.put(
+    "/marge/streaming/account/{account}/device/{device}/preset/{preset_number}",
+    tags=["marge"],
+)
+async def put_account_preset(
+    settings: Annotated[Settings, Depends(get_settings)],
+    account: str,
+    device: str,
+    preset_number: int,
+    request: Request,
+):
+    validate_params(account, device)
+    xml = await request.body()
+    xml_resp = update_preset(settings, datastore, account, device, preset_number, xml)
+    return bose_xml_response(xml_resp, startup_timestamp)
 
 
 @app.get("/marge/streaming/account/{account}/device/{device}/recents", tags=["marge"])
