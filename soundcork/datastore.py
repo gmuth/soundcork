@@ -100,10 +100,12 @@ class DataStore:
             preset_elem.attrib["createdOn"] = preset.created_on
             preset_elem.attrib["updatedOn"] = preset.updated_on
             content_item_elem = ET.SubElement(preset_elem, "ContentItem")
-            content_item_elem.attrib["source"] = preset.source
+            if preset.source:
+                content_item_elem.attrib["source"] = preset.source
             content_item_elem.attrib["type"] = preset.type
             content_item_elem.attrib["location"] = preset.location
-            content_item_elem.attrib["sourceAccount"] = preset.source_account
+            if preset.source_account:
+                content_item_elem.attrib["sourceAccount"] = preset.source_account
             content_item_elem.attrib["isPresetable"] = "true"
             ET.SubElement(content_item_elem, "itemName").text = preset.name
             ET.SubElement(content_item_elem, "containerArt").text = preset.container_art

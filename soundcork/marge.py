@@ -122,9 +122,9 @@ def presets(settings: Settings, account: str, device: str) -> list[Preset]:
         name = content_item.find("itemName").text
         source = content_item.attrib["source"]
         type = content_item.attrib.get("type", "")
-        location = content_item.attrib["location"]
-        source_account = content_item.attrib["sourceAccount"]
-        is_presetable = content_item.attrib["isPresetable"]
+        location = content_item.attrib.get("location", "")
+        source_account = content_item.attrib.get("sourceAccount", "")
+        is_presetable = content_item.attrib.get("isPresetable", "")
         container_art_elem = content_item.find("containerArt")
         # have to 'is not None' because bool(Element) returns false
         # if the element has no children
@@ -188,7 +188,7 @@ def update_preset(
     account: str,
     device: str,
     preset_number: int,
-    source_xml: str,
+    source_xml: bytes,
 ) -> ET.Element:
     conf_sources_list = configured_sources(settings, account, device)
     presets_list = presets(settings, account, device)
@@ -249,8 +249,6 @@ def content_item_source_xml(
         except StopIteration:
             raise HTTPException(status_code=400, detail="Invalid source")
         return configured_source_xml(matching_src, datestr)
-
-    idx = str(PROVIDERS.index(content_item.source) + 1)
 
     matching_src = next(
         i
@@ -367,7 +365,7 @@ def recents_xml(settings: Settings, account: str, device: str) -> ET.Element:
 
 
 def add_recent(
-    settings: Settings, account: str, device: str, source_xml: str
+    settings: Settings, account: str, device: str, source_xml: bytes
 ) -> ET.Element:
     conf_sources_list = configured_sources(settings, account, device)
     recents_list = recents(settings, account, device)
@@ -376,8 +374,15 @@ def add_recent(
 
     # load the recent to add
     device_id = device
-    last_played_at = new_recent_elem.find("lastplayedat").text
-    utc_time = int(datetime.fromisoformat(last_played_at).timestamp())
+    last_played_at = new_recent_elem.find("lastplayedat")
+    if last_played_at is not None and last_played_at.text:
+        utc_time = int(datetime.fromisoformat(last_played_at.text).timestamp())
+    else:
+        utc_time = int(datetime.now().timestamp())
+
+    # these values are all assumed to be required for this to be
+    # a valid Recent XML source; if any of these are not present
+    # they should produce an exception
     name = new_recent_elem.find("name").text
     source_id = new_recent_elem.find("sourceid").text
     type = new_recent_elem.find("contentItemType").text
@@ -417,14 +422,14 @@ def add_recent(
         # would probably have the second clobber the first
         next_id = max(int(recent.id) for recent in recents_list) + 1
         recent_obj = Recent(
-            name=name,
+            name=name,  # type:ignore
             utc_time=str(utc_time),
             id=str(next_id),
             source_id=source_id,
             source=source,
             device_id=device_id,
-            type=type,
-            location=location,
+            type=type,  # type:ignore
+            location=location,  # type:ignore
             source_account=source_account,
             is_presetable=is_presetable,
         )
@@ -470,10 +475,12 @@ def recents_save(
         recent_elem.attrib["utcTime"] = recent.utc_time
         recent_elem.attrib["id"] = recent.id
         content_item_elem = ET.SubElement(recent_elem, "contentItem")
-        content_item_elem.attrib["source"] = recent.source
+        if recent.source:
+            content_item_elem.attrib["source"] = recent.source
         content_item_elem.attrib["type"] = recent.type
         content_item_elem.attrib["location"] = recent.location
-        content_item_elem.attrib["sourceAccount"] = recent.source_account
+        if recent.source_account:
+            content_item_elem.attrib["sourceAccount"] = recent.source_account
         content_item_elem.attrib["isPresetable"] = recent.is_presetable
         ET.SubElement(content_item_elem, "itemName").text = recent.name
         ET.SubElement(content_item_elem, "containerArt").text = recent.container_art
