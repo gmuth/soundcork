@@ -103,6 +103,7 @@ class ContentItem(BaseModel):
     location: str
     source_account: Optional[str] = None
     source_id: Optional[str] = None
+    is_presetable: Optional[str] = None
 
 
 class Preset(ContentItem):
@@ -114,7 +115,6 @@ class Preset(ContentItem):
 class Recent(ContentItem):
     device_id: str
     utc_time: str
-    is_presetable: str
     container_art: Optional[str] = None
 
 

@@ -218,10 +218,9 @@ def bmx_services(settings: Annotated[Settings, Depends(get_settings)]) -> BmxRes
         return bmx_response
 
 
-@app.get("/bmx/{service}/v1/playback/station/{station_id}", tags=["bmx"])
-def bmx_playback(service: str, station_id: str) -> BmxPlaybackResponse:
-    if service == "tunein":
-        return tunein_playback(station_id)
+@app.get("/bmx/tunein/v1/playback/station/{station_id}", tags=["bmx"])
+def bmx_playback(station_id: str) -> BmxPlaybackResponse:
+    return tunein_playback(station_id)
 
 
 @app.get("/core02/svc-bmx-adapter-orion/prod/orion/station", tags=["bmx"])
@@ -230,7 +229,7 @@ def custom_stream_playback(request: Request) -> BmxPlaybackResponse:
     return play_custom_stream(data)
 
 
-@app.get("/media/{filename}", tags="bmx")
+@app.get("/media/{filename}", tags=["bmx"])
 def bmx_media_file(filename: str) -> FileResponse:
     sanitized_filename = "".join(
         x for x in filename if x.isalnum() or x == "." or x == "-" or x == "_"
@@ -257,7 +256,7 @@ def bose_xml_response(xml: ET.Element, etag: int = 0, method: str = "") -> Respo
     return response
 
 
-def validate_params(account=12345, device="ABCD3"):
+def validate_params(account="12345", device="ABCD3"):
     try:
         int(account)
     except ValueError:
