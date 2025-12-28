@@ -107,6 +107,8 @@ class ContentItem(BaseModel):
 
 class Preset(ContentItem):
     container_art: str
+    created_on: str
+    updated_on: str
 
 
 class Recent(ContentItem):

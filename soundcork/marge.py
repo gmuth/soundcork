@@ -116,6 +116,8 @@ def presets(settings: Settings, account: str, device: str) -> list[Preset]:
 
     for preset in root.findall("preset"):
         id = preset.attrib["id"]
+        created_on = preset.attrib.get("createdOn", "")
+        updated_on = preset.attrib.get("updatedOn", "")
         content_item = preset.find("ContentItem")
         name = content_item.find("itemName").text
         source = content_item.attrib["source"]
@@ -134,6 +136,8 @@ def presets(settings: Settings, account: str, device: str) -> list[Preset]:
         presets.append(
             Preset(
                 name=name,
+                created_on=created_on,
+                updated_on=updated_on,
                 id=id,
                 source=source,
                 type=type,
@@ -147,6 +151,21 @@ def presets(settings: Settings, account: str, device: str) -> list[Preset]:
     return presets
 
 
+def preset_xml(
+    preset: Preset, conf_sources_list: list[ConfiguredSource], datestr: str
+) -> ET.Element:
+    preset_element = ET.Element("preset")
+    preset_element.attrib["buttonNumber"] = preset.id
+    ET.SubElement(preset_element, "containerArt").text = preset.container_art
+    ET.SubElement(preset_element, "contentItemType").text = preset.type
+    ET.SubElement(preset_element, "createdOn").text = datestr
+    ET.SubElement(preset_element, "location").text = preset.location
+    ET.SubElement(preset_element, "name").text = preset.name
+    preset_element.append(content_item_source_xml(conf_sources_list, preset, datestr))
+    ET.SubElement(preset_element, "updatedOn").text = datestr
+    return preset_element
+
+
 def presets_xml(settings: Settings, account: str, device: str) -> ET.Element:
     conf_sources_list = configured_sources(settings, account, device)
 
@@ -157,19 +176,64 @@ def presets_xml(settings: Settings, account: str, device: str) -> ET.Element:
 
     presets_element = ET.Element("presets")
     for preset in presets_list:
-        preset_element = ET.SubElement(presets_element, "preset")
-        preset_element.attrib["buttonNumber"] = preset.id
-        ET.SubElement(preset_element, "containerArt").text = preset.container_art
-        ET.SubElement(preset_element, "contentItemType").text = preset.type
-        ET.SubElement(preset_element, "createdOn").text = datestr
-        ET.SubElement(preset_element, "location").text = preset.location
-        ET.SubElement(preset_element, "name").text = preset.name
-        preset_element.append(
-            content_item_source_xml(conf_sources_list, preset, datestr)
-        )
-        ET.SubElement(preset_element, "updatedOn").text = datestr
+        preset_element = preset_xml(preset, conf_sources_list, datestr)
+        presets_element.append(preset_element)
 
     return presets_element
+
+
+def update_preset(
+    settings: Settings,
+    datastore: Any,
+    account: str,
+    device: str,
+    preset_number: int,
+    source_xml: str,
+) -> ET.Element:
+    conf_sources_list = configured_sources(settings, account, device)
+    presets_list = presets(settings, account, device)
+
+    new_preset_elem = ET.fromstring(source_xml)
+
+    # load the preset to add
+
+    name = new_preset_elem.find("name").text.strip()
+    source_id = new_preset_elem.find("sourceid").text.strip()
+    # we could use username to match source maybe?
+    # username = new_preset_elem.find("username").text
+    location = new_preset_elem.find("location").text.strip()
+    content_item_type = new_preset_elem.find("contentItemType").text.strip()
+    container_art = new_preset_elem.find("containerArt").text.strip()
+
+    try:
+        matching_src = next(src for src in conf_sources_list if src.id == source_id)
+    except StopIteration:
+        raise HTTPException(status_code=400, detail="Invalid account")
+    source = matching_src.source_key_type
+    source_account = matching_src.source_key_account
+
+    now_str = str(int(datetime.now().timestamp()))
+
+    preset_obj = Preset(
+        id=str(preset_number),
+        type=content_item_type,
+        created_on=now_str,
+        updated_on=now_str,
+        name=name,
+        source=source,
+        location=location,
+        source_id=source_id,
+        source_account=source_account,
+        container_art=container_art,
+    )
+
+    presets_list[preset_number - 1] = preset_obj
+
+    datastore.save_presets(settings, account, device, presets_list)
+    datestr = "2012-09-19T12:43:00.000+00:00"
+
+    preset_element = preset_xml(preset_obj, conf_sources_list, datestr)
+    return preset_element
 
 
 def content_item_source_xml(
