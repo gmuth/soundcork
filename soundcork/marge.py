@@ -128,7 +128,7 @@ def content_item_source_xml(
     if content_item.source_id:
         try:
             matching_src = next(
-                i for i in configured_sources if i.id == content_item.source_id
+                cs for cs in configured_sources if cs.id == content_item.source_id
             )
         except StopIteration:
             print(f"invalid source for content_item.source_id {content_item.source_id}")
@@ -137,13 +137,12 @@ def content_item_source_xml(
 
     try:
         matching_src = next(
-            i
-            for i in configured_sources
-            if i.source_key_type == content_item.source
+            cs
+            for cs in configured_sources
+            if cs.source_key_type == content_item.source
             and (
-                i.source_key_account is None
-                or content_item.source_account is None
-                or i.source_key_account == content_item.source_account
+                cs.source_key_account == content_item.source_account
+                or (not cs.source_key_account and not content_item.source_account)
             )
         )
     except StopIteration:
