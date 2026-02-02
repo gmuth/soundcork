@@ -337,10 +337,11 @@ def scan_devices():
     return device_infos
 
 
-@app.post("/initialize_device/{device_id}", tags=["setup"])
-def initialize_device(device_id: str):
+@app.post("/add_device/{device_id}", tags=["setup"])
+def add_device_to_datastore(device_id: str):
     devices = get_bose_devices()
     for device in devices:
         info_elem = ET.fromstring(read_device_info(device))
         if info_elem.attrib.get("deviceID", "") == device_id:
-            return {device_id: add_device(device)}
+            success = add_device(device)
+            return {device_id: success}

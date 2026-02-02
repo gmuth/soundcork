@@ -1,7 +1,7 @@
 import logging
-import os
 import xml.etree.ElementTree as ET
-from os import path, walk
+from os import mkdir, path, walk
+from typing import Optional
 
 from soundcork.config import Settings
 from soundcork.constants import (
@@ -324,8 +324,8 @@ class DataStore:
             return False
 
         # TODO: add error handling if you can't make the directory
-        os.mkdir(self.account_dir(account))
-        os.mkdir(self.account_devices_dir(account))
+        mkdir(self.account_dir(account))
+        mkdir(self.account_devices_dir(account))
         # create devices subdirectory
         return True
 
@@ -334,7 +334,7 @@ class DataStore:
             return False
 
         # TODO: add error handling if you can't make the directory
-        os.mkdir(path.join(self.account_devices_dir(account), device_id))
+        mkdir(path.join(self.account_devices_dir(account), device_id))
 
         # TODO: add error handling if you can't write the file
         with open(
