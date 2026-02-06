@@ -9,11 +9,10 @@
 - Click on the station and copy the UUID from the URL.
 - e.g. `https://www.radio-browser.info/history/d28420a4-eccf-47a2-ace1-088c7e7cb7e0`
 
-
 ### RADIO_BROWSER
 
 - Soundcork supports source type RADIO_BROWSER to play radio stations.
-- Set the `location attribute` to `/stations/byuuid/{UUID}`.
+- Set the `location` attribute to `/stations/byuuid/{UUID}`.
 
 
 ```xml
