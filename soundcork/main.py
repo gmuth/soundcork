@@ -1,6 +1,5 @@
 import logging
 import os
-
 import xml.etree.ElementTree as ET
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -18,7 +17,7 @@ from soundcork.bmx import (
     tunein_podcast_info,
 )
 from soundcork.config import Settings
-from soundcork.constants import ACCOUNT_RE, DEVICE_RE, GROUP_RE
+from soundcork.constants import ACCOUNT_RE, DEVICE_RE
 from soundcork.datastore import DataStore
 from soundcork.devices import (
     add_device,
@@ -26,6 +25,8 @@ from soundcork.devices import (
     read_device_info,
     read_recents,
 )
+from soundcork.groups import get_groups_router
+from soundcork.groups_service import get_groups_service_router
 from soundcork.marge import (
     account_full_xml,
     add_device_to_account,
@@ -47,8 +48,6 @@ from soundcork.model import (
     BoseXMLResponse,
 )
 
-from soundcork.groups import get_groups_router
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
@@ -58,6 +57,7 @@ logger = logging.getLogger(__name__)
 datastore = DataStore()
 settings = Settings()
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting up soundcork")
@@ -65,6 +65,7 @@ async def lifespan(app: FastAPI):
     logger.info("done starting up server")
     yield
     logger.debug("closing server")
+
 
 description = """
 This emulates the SoundTouch servers so you don't need connectivity
@@ -427,7 +428,7 @@ def sw_update() -> Response:
 @app.post("/v1/scmudc/{deviceid}", tags=["stats"], status_code=HTTPStatus.OK)
 def stats_scmudc(deviceid: str):
     """Returns 200 for the analytics endpoint.
-    
+
     This isn't an endpoint we use, but it's noisy when it fails. Return 200.
     """
     return
@@ -439,7 +440,9 @@ def bose_xml_str(xml: ET.Element) -> str:
 
     return return_xml
 
+
 ################## configuration ############
+
 
 @app.get("/scan_recents", tags=["setup"])
 def test_scan_recents():
@@ -476,6 +479,8 @@ def add_device_to_datastore(device_id: str):
             success = add_device(device)
             return {device_id: success}
 
+
 #####################################################################################
-#-- include all routines for groups
+# -- include all routines for groups
 app.include_router(get_groups_router(datastore))
+app.include_router(get_groups_service_router(datastore))
