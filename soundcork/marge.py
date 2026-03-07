@@ -490,7 +490,6 @@ def update_device_poweron(datastore: "DataStore", poweron_xml: bytes):
     datastore.save_poweron(device.device_id, poweron_xml.decode())
 
 
-# -- check group status of a device
 def get_device_group_xml(
     datastore: "DataStore", account: str, device_id: str
 ) -> ET.Element:
@@ -508,15 +507,12 @@ def get_device_group_xml(
         return ET.Element("groups")
 
 
-# -- add a group, if a.) both devices are ungrouped and
-#                   b.) of type ST10 and
 def add_group(datastore: "DataStore", account: str, group_info_xml: str) -> ET.Element:
     group_elem = ET.fromstring(group_info_xml)
     group = datastore.group_from_xml("", group_elem)
     return datastore.add_group(account, group)
 
 
-# update the name of the group
 def modify_group(
     datastore: "DataStore", account: str, group_id: str, group_info_xml: str
 ) -> ET.Element:
